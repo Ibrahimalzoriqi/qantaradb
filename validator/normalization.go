@@ -85,6 +85,9 @@ func normalizeChecksumValue(value interface{}) (string, checksumFlags) {
 		}
 		return normalizeStringForChecksum(v.String)
 	default:
+		if normalizedJSON, ok := normalizeStructuredJSONValue(value); ok {
+			return "json:" + normalizedJSON, checksumFlags{}
+		}
 		return normalizeStringForChecksum(fmt.Sprintf("%v", value))
 	}
 }
@@ -201,11 +204,26 @@ func formatClockMicroseconds(microseconds int64) string {
 }
 
 func normalizeJSON(value string) (string, bool) {
-	if !strings.HasPrefix(value, "{") && !strings.HasPrefix(value, "[") {
+	isContainer := strings.HasPrefix(value, "{") || strings.HasPrefix(value, "[")
+	isQuoted := strings.HasPrefix(value, `"`)
+	if !isContainer && !isQuoted {
 		return "", false
 	}
 	var decoded interface{}
 	if err := json.Unmarshal([]byte(value), &decoded); err != nil {
+		return "", false
+	}
+	if nested, ok := decoded.(string); ok {
+		nested = strings.TrimSpace(nested)
+		if strings.HasPrefix(nested, "{") || strings.HasPrefix(nested, "[") {
+			var nestedDecoded interface{}
+			if err := json.Unmarshal([]byte(nested), &nestedDecoded); err == nil {
+				decoded = nestedDecoded
+				isContainer = true
+			}
+		}
+	}
+	if !isContainer {
 		return "", false
 	}
 	encoded, err := json.Marshal(decoded)
@@ -213,6 +231,23 @@ func normalizeJSON(value string) (string, bool) {
 		return "", false
 	}
 	return string(encoded), true
+}
+
+func normalizeStructuredJSONValue(value interface{}) (string, bool) {
+	if value == nil {
+		return "", false
+	}
+
+	kind := reflect.TypeOf(value).Kind()
+	if kind != reflect.Map && kind != reflect.Slice && kind != reflect.Array {
+		return "", false
+	}
+
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return "", false
+	}
+	return normalizeJSON(string(encoded))
 }
 
 func normalizeTime(value string) (string, bool) {
