@@ -81,7 +81,7 @@ func CreatePlan(schema *inspector.SchemaInfo, mConfig mapper.Config, excludes []
 		}
 
 		for _, col := range t.Columns {
-			targetType, constraints, err := mapper.MapType(col, mConfig)
+			targetType, constraints, err := mapper.MapTableType(t.Name, col, mConfig)
 			if err != nil {
 				return nil, fmt.Errorf("failed to map column %s.%s: %w", t.Name, col.Name, err)
 			}

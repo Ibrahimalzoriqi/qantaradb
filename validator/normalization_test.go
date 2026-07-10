@@ -15,6 +15,9 @@ func TestNormalizeChecksumValueHandlesNaturalDriverDifferences(t *testing.T) {
 	}{
 		{name: "decimal trailing zeros", a: "12.3400", b: "12.34"},
 		{name: "json key order", a: `{"b":2,"a":1}`, b: `{"a":1,"b":2}`},
+		{name: "postgres jsonb map rendering", a: `{"attributes":{"id":1,"active":true},"old":null}`, b: map[string]interface{}{"old": nil, "attributes": map[string]interface{}{"active": true, "id": float64(1)}}},
+		{name: "postgres jsonb array rendering", a: `[{"id":1},{"id":2}]`, b: []interface{}{map[string]interface{}{"id": float64(1)}, map[string]interface{}{"id": float64(2)}}},
+		{name: "double encoded json array", a: `"[\"branch_management\",\"catalog\"]"`, b: []interface{}{"branch_management", "catalog"}},
 		{name: "boolean rendering", a: true, b: "true"},
 		{name: "timestamp rendering", a: "2026-06-27 12:30:00", b: "2026-06-27T12:30:00Z"},
 	}
@@ -53,6 +56,29 @@ func TestNormalizeChecksumValueHandlesPGNumericRendering(t *testing.T) {
 	}
 	if normalized != "scalar:10" {
 		t.Fatalf("unexpected positive exponent pg numeric: %s", normalized)
+	}
+}
+
+func TestNormalizeChecksumValueHandlesPGTimeRendering(t *testing.T) {
+	source, sourceFlags := normalizeChecksumValue("09:30:00")
+	target, targetFlags := normalizeChecksumValue(pgtype.Time{
+		Microseconds: (9*60*60 + 30*60) * 1_000_000,
+		Valid:        true,
+	})
+	if sourceFlags.Unsupported || targetFlags.Unsupported {
+		t.Fatal("expected clock time values to be supported")
+	}
+	if source != target {
+		t.Fatalf("expected clock values to match, got %q != %q", source, target)
+	}
+
+	source, _ = normalizeChecksumValue("00:01:00")
+	target, _ = normalizeChecksumValue(pgtype.Time{
+		Microseconds: 60 * 1_000_000,
+		Valid:        true,
+	})
+	if source != target {
+		t.Fatalf("expected minute clock values to match, got %q != %q", source, target)
 	}
 }
 

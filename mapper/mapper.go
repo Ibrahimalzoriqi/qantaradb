@@ -9,11 +9,12 @@ import (
 )
 
 type Config struct {
-	Tinyint1AsBool         bool   `yaml:"tinyint1_as_bool" json:"tinyint1_as_bool"`
-	DateTimeTimezonePolicy string `yaml:"datetime_timezone_policy" json:"datetime_timezone_policy"` // "utc", "local", "none"
-	GeometryPostGISMode    bool   `yaml:"geometry_postgis_mode" json:"geometry_postgis_mode"`
-	EnumAsDomain           bool   `yaml:"enum_as_domain" json:"enum_as_domain"`
-	SetAsArray             bool   `yaml:"set_as_array" json:"set_as_array"`
+	Tinyint1AsBool          bool     `yaml:"tinyint1_as_bool" json:"tinyint1_as_bool"`
+	Tinyint1BooleanDenylist []string `yaml:"tinyint1_boolean_denylist" json:"tinyint1_boolean_denylist"`
+	DateTimeTimezonePolicy  string   `yaml:"datetime_timezone_policy" json:"datetime_timezone_policy"` // "utc", "local", "none"
+	GeometryPostGISMode     bool     `yaml:"geometry_postgis_mode" json:"geometry_postgis_mode"`
+	EnumAsDomain            bool     `yaml:"enum_as_domain" json:"enum_as_domain"`
+	SetAsArray              bool     `yaml:"set_as_array" json:"set_as_array"`
 }
 
 var (
@@ -22,12 +23,19 @@ var (
 )
 
 func MapType(col inspector.Column, config Config) (string, []string, error) {
+	return MapTableType("", col, config)
+}
+
+// MapTableType maps a column while allowing a qualified table.column override.
+// Tinyint(1) is frequently a boolean in MySQL, but legacy status fields can
+// legitimately use additional numeric states and must remain numeric.
+func MapTableType(tableName string, col inspector.Column, config Config) (string, []string, error) {
 	dataType := strings.ToLower(col.DataType)
 	columnType := strings.ToLower(col.ColumnType)
 
 	switch dataType {
 	case "tinyint":
-		if config.Tinyint1AsBool && (strings.Contains(columnType, "(1)") || col.ColumnType == "tinyint(1)") {
+		if config.Tinyint1AsBool && !config.tinyint1MustStayNumeric(tableName, col.Name) && (strings.Contains(columnType, "(1)") || col.ColumnType == "tinyint(1)") {
 			return "boolean", nil, nil
 		}
 		if col.IsUnsigned {
@@ -145,6 +153,21 @@ func MapType(col inspector.Column, config Config) (string, []string, error) {
 
 		return "text", nil, nil
 	}
+}
+
+func (config Config) tinyint1MustStayNumeric(tableName, columnName string) bool {
+	if strings.TrimSpace(tableName) == "" || strings.TrimSpace(columnName) == "" {
+		return false
+	}
+
+	qualifiedName := strings.ToLower(strings.TrimSpace(tableName) + "." + strings.TrimSpace(columnName))
+	for _, entry := range config.Tinyint1BooleanDenylist {
+		if strings.EqualFold(strings.TrimSpace(entry), qualifiedName) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func quoteIdent(identifier string) string {
