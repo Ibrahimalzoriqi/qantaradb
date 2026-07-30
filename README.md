@@ -109,7 +109,7 @@ Check row counts and key drift, reset sequences, and generate markdown auditing 
 ## Safety Guidelines & Policy
 
 1. **Read-Only Source**: The library opens connections with read-only operations for the source database. It will NEVER execute writes or alter tables on your source MySQL database.
-2. **Target Write Protection**: `migrate` is dry-run by default. Real copy requires `--execute --local-only`, a local source/target host, and a target database name containing `local`, `test`, or `qantara`.
+2. **Target Write Protection**: `migrate` is dry-run by default. Real copy requires `--execute --local-only`, a local source/target host, and a target database name containing `local`, `test`, `qantara`, or `staging`.
 3. **No Hardcoded Credentials**: DSNs and secrets should be provided via OS environment variables or passed securely. Never commit files containing database credentials.
 
 ---

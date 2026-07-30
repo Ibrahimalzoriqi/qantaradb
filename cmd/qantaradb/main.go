@@ -577,8 +577,8 @@ func validateLocalExecutionGate(sourceDSN, targetDSN string, localOnly bool) err
 		return fmt.Errorf("target DSN must point to localhost/127.0.0.1 for local execution: %s", maskDSN(targetDSN))
 	}
 	targetDB := extractDatabaseName(targetDSN)
-	if !containsAny(strings.ToLower(targetDB), []string{"local", "test", "qantara"}) {
-		return fmt.Errorf("target database name must contain local, test, or qantara: %s", targetDB)
+	if !containsAny(strings.ToLower(targetDB), []string{"local", "test", "qantara", "staging"}) {
+		return fmt.Errorf("target database name must contain local, test, qantara, or staging: %s", targetDB)
 	}
 	if strings.Contains(strings.ToLower(targetDB), "prod") && !containsAny(strings.ToLower(targetDB), []string{"qantara", "test", "local"}) {
 		return fmt.Errorf("target database name looks production-like: %s", targetDB)
