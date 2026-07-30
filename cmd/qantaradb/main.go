@@ -557,7 +557,7 @@ func maskDSN(dsn string) string {
 func isTestDatabase(dsn string) bool {
 	lower := strings.ToLower(dsn)
 	// If it contains any test environment keyword, consider it a test DB.
-	keywords := []string{"test", "dev", "sandbox", "demo", "local", "stage", "development", "qa"}
+	keywords := []string{"test", "dev", "sandbox", "demo", "local", "stage", "staging", "development", "qa"}
 	for _, kw := range keywords {
 		if strings.Contains(lower, kw) {
 			return true

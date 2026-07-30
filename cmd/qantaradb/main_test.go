@@ -25,3 +25,13 @@ func TestValidateLocalExecutionGateRejectsProductionNamedTarget(t *testing.T) {
 		t.Fatal("production-named target must remain blocked")
 	}
 }
+
+func TestIsTestDatabaseRecognizesStagingButNotProduction(t *testing.T) {
+	if !isTestDatabase("postgres://staging:password@127.0.0.1:5432/FoodTechConsoleStaging?sslmode=disable") {
+		t.Fatal("dedicated staging target must be recognized by the destructive-operation safety gate")
+	}
+
+	if isTestDatabase("postgres://production:password@127.0.0.1:5432/FoodTechConsoleProduction?sslmode=disable") {
+		t.Fatal("production target must remain outside the staging/test allowlist")
+	}
+}
